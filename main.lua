@@ -1,117 +1,112 @@
---// RAnzz Hitbox ESP v1.1
---// By RAnzz 😈
+--// RAnzz Mini Head ESP v1.0
+--// Username + Avatar + Health Bar
+--// Toggle ON/OFF | Client Side
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local UIS = game:GetService("UserInputService")
 
-local ESPEnabled = true
-local RainbowSpeed = 0.5
-local MaxDistance = 100
-local toggleKey = Enum.KeyCode.H
+local ESP_ENABLED = true
 local ESPs = {}
 
--- Rainbow color
-local function getRainbowColor()
-    local hue = tick() * RainbowSpeed % 1
-    return Color3.fromHSV(hue,1,1)
-end
+-- ===== GUI TOGGLE =====
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+ScreenGui.Name = "RAnzzESP"
 
--- Destroy ESP lama kalo ada
-local function destroyESP(player)
-    local esp = ESPs[player]
-    if esp then
-        if esp.Box then esp.Box:Destroy() end
-        if esp.HealthBar then esp.HealthBar:Destroy() end
-        ESPs[player] = nil
-    end
-end
+local Toggle = Instance.new("TextButton", ScreenGui)
+Toggle.Size = UDim2.new(0, 90, 0, 30)
+Toggle.Position = UDim2.new(0, 10, 0, 150)
+Toggle.Text = "ESP : ON"
+Toggle.BackgroundColor3 = Color3.fromRGB(20,20,20)
+Toggle.TextColor3 = Color3.new(1,1,1)
+Toggle.TextSize = 14
+Toggle.BorderSizePixel = 0
 
--- Buat ESP baru
-local function createESP(player)
-    destroyESP(player)
-    if not player.Character then return end
+Toggle.MouseButton1Click:Connect(function()
+	ESP_ENABLED = not ESP_ENABLED
+	Toggle.Text = ESP_ENABLED and "ESP : ON" or "ESP : OFF"
 
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    local head = player.Character:FindFirstChild("Head")
-    local hum = player.Character:FindFirstChild("Humanoid")
-    if not hrp or not head or not hum then return end
-
-    -- Box
-    local box = Instance.new("BoxHandleAdornment")
-    box.Adornee = hrp
-    box.AlwaysOnTop = true
-    box.ZIndex = 2
-    box.Size = Vector3.new(2,5,1)
-    box.Transparency = 0.5
-    box.Color3 = getRainbowColor()
-    box.Parent = hrp
-
-    local bar = Instance.new("Frame")
-    bar.Size = UDim2.new(hum.Health/hum.MaxHealth,0,1,0)
-    bar.BackgroundColor3 = Color3.fromRGB(255,0,0)
-    bar.BorderSizePixel = 0
-    bar.Parent = healthBar
-
-    ESPs[player] = {Box = box, HealthBar = bar, Humanoid = hum}
-end
-
--- Update ESP tiap frame
-local function updateESP()
-    for player, esp in pairs(ESPs) do
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
-            esp.Box.Adornee = player.Character.HumanoidRootPart
-            esp.HealthBar.Parent = player.Character.Head
-            esp.Box.Color3 = getRainbowColor()
-            if esp.Humanoid then
-                esp.HealthBar.Frame.Size = UDim2.new(math.clamp(esp.Humanoid.Health/esp.Humanoid.MaxHealth,0,1),0,1,0)
-            end
-        else
-            destroyESP(player)
-        end
-    end
-end
-
-RunService.RenderStepped:Connect(function()
-    if ESPEnabled then
-        updateESP()
-    end
+	for _,gui in pairs(ESPs) do
+		if gui then
+			gui.Enabled = ESP_ENABLED
+		end
+	end
 end)
 
--- Toggle ESP
-UIS.InputBegan:Connect(function(input,gpe)
-    if gpe then return end
-    if input.KeyCode == toggleKey then
-        ESPEnabled = not ESPEnabled
-        if not ESPEnabled then
-            for player,_ in pairs(ESPs) do
-                destroyESP(player)
-            end
-        else
-            for _,player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    createESP(player)
-                end
-            end
-        end
-    end
-end)
+-- ===== FUNCTION CREATE ESP =====
+local function CreateESP(player)
+	if player == LocalPlayer then return end
 
--- Auto create ESP untuk player baru & respawn
-local function setupPlayer(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        createESP(player)
-    end)
+	local function Setup(char)
+		local head = char:WaitForChild("Head",5)
+		local hum = char:WaitForChild("Humanoid",5)
+		if not head or not hum then return end
+
+		local billboard = Instance.new("BillboardGui", head)
+		billboard.Name = "RAnzzESP_UI"
+		billboard.Size = UDim2.new(0,120,0,40)
+		billboard.StudsOffset = Vector3.new(0,2.2,0)
+		billboard.AlwaysOnTop = true
+		billboard.Enabled = ESP_ENABLED
+
+		-- Avatar
+		local avatar = Instance.new("ImageLabel", billboard)
+		avatar.Size = UDim2.new(0,30,0,30)
+		avatar.Position = UDim2.new(0,0,0,5)
+		avatar.BackgroundTransparency = 1
+
+		local img = Players:GetUserThumbnailAsync(
+			player.UserId,
+			Enum.ThumbnailType.HeadShot,
+			Enum.ThumbnailSize.Size48x48
+		)
+		avatar.Image = img
+
+		-- Username
+		local name = Instance.new("TextLabel", billboard)
+		name.Position = UDim2.new(0,35,0,2)
+		name.Size = UDim2.new(0,80,0,14)
+		name.Text = player.Name
+		name.TextScaled = true
+		name.TextColor3 = Color3.new(1,1,1)
+		name.BackgroundTransparency = 1
+
+		-- Health BG
+		local bg = Instance.new("Frame", billboard)
+		bg.Position = UDim2.new(0,35,0,20)
+		bg.Size = UDim2.new(0,80,0,6)
+		bg.BackgroundColor3 = Color3.fromRGB(40,40,40)
+		bg.BorderSizePixel = 0
+
+		-- Health Bar
+		local bar = Instance.new("Frame", bg)
+		bar.Size = UDim2.new(1,0,1,0)
+		bar.BackgroundColor3 = Color3.fromRGB(0,255,0)
+		bar.BorderSizePixel = 0
+
+		hum.HealthChanged:Connect(function()
+			local hp = hum.Health / hum.MaxHealth
+			bar.Size = UDim2.new(hp,0,1,0)
+			bar.BackgroundColor3 = Color3.fromRGB(255 - (hp*255), hp*255, 0)
+		end)
+
+		ESPs[player] = billboard
+	end
+
+	if player.Character then
+		Setup(player.Character)
+	end
+	player.CharacterAdded:Connect(Setup)
 end
 
-for _,player in pairs(Players:GetPlayers()) do
-    setupPlayer(player)
-    createESP(player)
+-- ===== INIT =====
+for _,plr in pairs(Players:GetPlayers()) do
+	CreateESP(plr)
 end
 
-Players.PlayerAdded:Connect(function(player)
-    setupPlayer(player)
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(function(plr)
+	if ESPs[plr] then
+		ESPs[plr]:Destroy()
+		ESPs[plr] = nil
+	end
 end)
